@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"internhub/user-service/config"
@@ -12,15 +13,20 @@ import (
 func main() {
 	config.InitDB()
 
-	if err := config.DB.AutoMigrate(&model.User{}); err != nil {
+	if err := config.DB.AutoMigrate(&model.UserProfile{}); err != nil {
 		log.Fatalf("AutoMigrate fail: %v", err)
 	}
 
 	r := gin.Default()
 	api := r.Group("/api/v1")
 	{
-		api.POST("/users/register", handler.Register)
+		api.GET("/users/me", handler.GetMe)
+		api.PATCH("/users/me", handler.UpdateMe)
 	}
 
-	r.Run(":8081")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8082"
+	}
+	r.Run(":" + port)
 }

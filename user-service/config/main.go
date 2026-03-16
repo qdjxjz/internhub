@@ -6,38 +6,37 @@ import (
 	"os"
 	"time"
 
-	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 var DB *gorm.DB
 
 func InitDB() {
-	user := os.Getenv("MYSQL_USER")
-	if user == "" {
-		user = "root"
-	}
-	pass := os.Getenv("MYSQL_PASSWORD")
-	if pass == "" {
-		pass = "password"
-	}
-	host := os.Getenv("MYSQL_HOST")
+	host := os.Getenv("PG_HOST")
 	if host == "" {
-		host = "127.0.0.1"
+		host = "localhost"
 	}
-	port := os.Getenv("MYSQL_PORT")
-	if port == "" {
-		port = "3306"
+	user := os.Getenv("PG_USER")
+	if user == "" {
+		user = "postgres"
 	}
-	dbname := os.Getenv("MYSQL_DATABASE")
+	pass := os.Getenv("PG_PASSWORD")
+	if pass == "" {
+		pass = "postgres"
+	}
+	dbname := os.Getenv("PG_DATABASE")
 	if dbname == "" {
 		dbname = "internhub"
 	}
-
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", user, pass, host, port, dbname)
+	port := os.Getenv("PG_PORT")
+	if port == "" {
+		port = "5432"
+	}
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable", host, user, pass, dbname, port)
 
 	var err error
-	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("数据库连接失败:", err)
 	}
@@ -48,6 +47,5 @@ func InitDB() {
 		sqlDB.SetMaxIdleConns(25)
 		sqlDB.SetConnMaxLifetime(5 * time.Minute)
 	}
-
-	log.Println("user-service: DB connected")
+	log.Println("user-service: DB connected (PostgreSQL)")
 }
