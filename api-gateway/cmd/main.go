@@ -43,6 +43,8 @@ func main() {
 		api.POST("/applications", JWTMiddleware(), proxyToApplyWithAuth("POST", "/api/v1/applications"))
 		api.GET("/applications/me", JWTMiddleware(), proxyToApplyWithAuth("GET", "/api/v1/applications/me"))
 
+		api.GET("/recommendations", JWTMiddleware(), proxyToRecommendWithAuth("GET", "/api/v1/recommendations"))
+
 		api.GET("/protected", JWTMiddleware(), func(c *gin.Context) {
 			userID, _ := c.Get("user_id")
 			c.JSON(http.StatusOK, gin.H{
@@ -89,6 +91,13 @@ func getApplyServiceURL() string {
 		return strings.TrimSuffix(u, "/")
 	}
 	return "http://127.0.0.1:8084"
+}
+
+func getRecommendServiceURL() string {
+	if u := os.Getenv("RECOMMEND_SERVICE_URL"); u != "" {
+		return strings.TrimSuffix(u, "/")
+	}
+	return "http://127.0.0.1:8085"
 }
 
 func getJWTSecret() []byte {
@@ -222,6 +231,44 @@ func proxyToUserWithAuth(method, path string) gin.HandlerFunc {
 		if err != nil {
 			logger.Log.Error("user service unavailable: " + err.Error())
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "user service unavailable"})
+			return
+		}
+		defer resp.Body.Close()
+		respBody, _ := io.ReadAll(resp.Body)
+		c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), respBody)
+	}
+}
+
+func proxyToRecommendWithAuth(method, path string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, exists := c.Get("user_id")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing user context"})
+			return
+		}
+		var body io.Reader
+		if method != "GET" && c.Request.Body != nil {
+			bodyBytes, _ := io.ReadAll(c.Request.Body)
+			body = bytes.NewBuffer(bodyBytes)
+		}
+		targetURL := getRecommendServiceURL() + path
+		if q := c.Request.URL.RawQuery; q != "" {
+			targetURL += "?" + q
+		}
+		req, err := http.NewRequest(method, targetURL, body)
+		if err != nil {
+			logger.Log.Error("failed to create proxy request")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+			return
+		}
+		req.Header = c.Request.Header.Clone()
+		req.Header.Set(headerUserID, fmt.Sprint(userID))
+		// 推荐服务会调 OpenAI，可能较慢，超时设为 60 秒
+		client := &http.Client{Timeout: 60 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			logger.Log.Error("recommend service unavailable: " + err.Error())
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "recommend service unavailable"})
 			return
 		}
 		defer resp.Body.Close()
