@@ -6,7 +6,9 @@
 
 ## Demo
 
-📹 [观看 Demo 视频](demo/demo.mp4)（点击链接在 GitHub 上播放或下载）
+https://github.com/user-attachments/assets/6c2bb26a-a465-4a47-97dc-5804a569553d
+
+
 
 ## 架构图
 
