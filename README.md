@@ -6,7 +6,7 @@
 
 ## Demo
 
-<video src="demo/demo.mp4" controls width="720"></video>
+📹 [观看 Demo 视频](demo/demo.mp4)（点击链接在 GitHub 上播放或下载）
 
 ## 架构图
 
